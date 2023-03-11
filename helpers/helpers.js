@@ -1,15 +1,8 @@
-export const validateSearchRequest = () => {
-    return [
-        body('firstCity').notEmpty().withMessage('First city name is required.').matches(/^[a-zA-Z\s]+$/).withMessage('First city name can only contain letters and whitespace.'),
-        body('secondCity').notEmpty().withMessage('Second city name is required.').matches(/^[a-zA-Z\s]+$/).withMessage('Second city name can only contain letters and whitespace.'),
-    ];
-}
+const EMBED = encodeURI("city:search-results/city:item/city:urban_area/ua:scores")
+const PERFECT_TEMPERATURE = 22.0 // in Celcius
 
-export const validateId = () => {
-    return [check('id').isUUID().withMessage('Comparison id must be a valid UUID.')]
-}
 
-export const getCityData = async (city) => {
+const getCityData = async (city) => {
     const data = await fetch(`https://api.teleport.org/api/cities/?search=${encodeURI(city)}&embed=${EMBED}`)
         .then(response => response.json());
 
@@ -20,8 +13,7 @@ export const getCityData = async (city) => {
     }
 }
 
-
-export const getScores = async (cityData) => {
+const getScores = async (cityData) => {
     const cityName = cityData.full_name
     const categoriesScores = cityData._embedded['ua:scores'].categories
     const score = cityData._embedded['ua:scores'].teleport_city_score
@@ -39,9 +31,9 @@ export const getScores = async (cityData) => {
     return { cityName, categoriesScores, qualityOfLiveScore: score, weatherScore: weatherScore.toFixed(2), totalScore: (score + weatherScore) / 2 }
 }
 
-
-export const compare = (firstCityScores, secondCityScores) => {
+const compare = (firstCityScores, secondCityScores) => {
     let result = {}
+    
     firstCityScores.categoriesScores.forEach((category, index) => {
         const firstCityScore = category.score_out_of_10
         const secondCityScore = secondCityScores.categoriesScores[index].score_out_of_10
@@ -74,5 +66,11 @@ export const compare = (firstCityScores, secondCityScores) => {
         resultsSummary['total'] = { winner: firstCityTotalScore > secondCityTotalScore ? firstCityScores.cityName : secondCityScores.cityName, difference: Math.abs(firstCityTotalScore - secondCityTotalScore).toFixed(2) }
     }
 
-    return { ...result, resultsSummary }
+    return { resultsSummary, ...result }
+}
+
+module.exports = {
+    getCityData,
+    getScores,
+    compare
 }

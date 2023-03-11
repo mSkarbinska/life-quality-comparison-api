@@ -1,5 +1,5 @@
-const comparisons =[
+ let comparisons = [
 
 ]
 
-module.export = comparisons
+module.exports = comparisons

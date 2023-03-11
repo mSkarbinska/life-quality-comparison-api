@@ -1,14 +1,21 @@
 const express = require('express');
 const router = express.Router();
-const { body, validationResult } = require('express-validator');
-const { getCityData, getScores, compare, validateId } = require('../helpers/helpers')
+const { body, validationResult, check } = require('express-validator');
+const { getCityData, getScores, compare } = require('../helpers/helpers')
 const { v4: uuidv4 } = require('uuid');
 
-let comparisons = require('../data/comparisons.js')
+let comparisons = require('../data/comparisons')
 
-const EMBED = encodeURI("city:search-results/city:item/city:urban_area/ua:scores")
-const PERFECT_TEMPERATURE = 22.0 // in Celcius
+const validateSearchRequest = () => {
+  return [
+    body('firstCity').notEmpty().withMessage('First city name is required.').matches(/^[a-zA-Z\s]+$/).withMessage('First city name can only contain letters and whitespace.'),
+    body('secondCity').notEmpty().withMessage('Second city name is required.').matches(/^[a-zA-Z\s]+$/).withMessage('Second city name can only contain letters and whitespace.'),
+  ];
+}
 
+const validateId = () => {
+  return [check('id').isUUID().withMessage('Comparison id must be a valid UUID.')]
+}
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
@@ -29,14 +36,13 @@ async function (req, res, next) {
     const firstCityData = await getCityData(firstCity);
     const secondCityData = await getCityData(secondCity);
 
-    const firstCityScores = await getScores(firstCityData).then(data=>data)
-    const secondCityScores = await getScores(secondCityData).then(data=>data)
+    const firstCityScores = await getScores(firstCityData);
+    const secondCityScores = await getScores(secondCityData);
 
     const comparisonResults = compare(firstCityScores, secondCityScores)
 
-    res.json({ comparisonResults })
+    res.json({ firstCity: firstCityScores.cityName, secondCity:secondCityScores.cityName, comparisonResults })
   } catch (error) {
-    console.log(error)
     res.status(400).json({ error: error.message })
   }
 }
@@ -63,7 +69,6 @@ router.get("/comparison/:id", validateId(), function (req, res, next) {
     res.status(404).json({ error: "Comparison not found" })
   }
 })
-
 
 module.exports = router;
 
