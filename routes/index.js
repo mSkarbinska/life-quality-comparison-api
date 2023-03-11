@@ -1,5 +1,8 @@
 const express = require('express');
 const router = express.Router();
+const { body, validationResult } = require('express-validator');
+
+let comparisons = require('../data/comparisons.js')
 
 const EMBED = encodeURI("city:search-results/city:item/city:urban_area/ua:scores")
 const PERFECT_TEMPERATURE = 22.0 //in Celcius
@@ -9,8 +12,13 @@ router.get('/', function(req, res, next) {
   res.render('index', { title: 'City life' });
 });
 
+router.post('/search', validateSearchRequest(),
+async function (req, res, next) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
 
-router.post('/search', async function (req, res, next) {
   firstCity = req.body.firstCity
   secondCity = req.body.secondCity
 
@@ -31,12 +39,19 @@ router.post('/search', async function (req, res, next) {
 }
 );
 
+function validateSearchRequest() {
+  return [
+    body('firstCity').notEmpty().withMessage('First city name is required.').matches(/^[a-zA-Z\s]+$/).withMessage('First city name can only contain letters and whitespace.'),
+    body('secondCity').notEmpty().withMessage('Second city name is required.').matches(/^[a-zA-Z\s]+$/).withMessage('Second city name can only contain letters and whitespace.'),
+  ];
+}
+
 const getCityData = async (city) => {
   const data = await fetch(`https://api.teleport.org/api/cities/?search=${encodeURI(city)}&embed=${EMBED}`)
     .then(response =>response.json());
 
-  if (!data) {
-    throw new Error("No city found")
+  if (!data || data._embedded['city:search-results'].length === 0) {
+    throw new Error(`No city named ${city} was found. Please check the name and try again.`)
   } else{
     return data?._embedded['city:search-results'][0]._embedded['city:item']._embedded['city:urban_area'];
   }
@@ -55,9 +70,9 @@ const getScores = async (cityData) => {
   const avHighTemp = weatherDetails.find(detail => detail.id === "WEATHER-AVERAGE-HIGH");
   const avLowTemp = weatherDetails.find(detail => detail.id === "WEATHER-AVERAGE-LOW");
 
-  const weatherScore = ((365.0 - avNumRainyDays.float_value) - Math.abs(parseFloat(avHighTemp.string_value) - PERFECT_TEMPERATURE) - Math.abs(PERFECT_TEMPERATURE - parseFloat(avLowTemp.string_value)))/365 * 100
+  const weatherScore = ((365.0 - avNumRainyDays?.float_value) - Math.abs(parseFloat(avHighTemp?.string_value) - PERFECT_TEMPERATURE) - Math.abs(PERFECT_TEMPERATURE - parseFloat(avLowTemp?.string_value)))/365 * 100
 
-  return { cityName, categoriesScores, qualityOfLiveScore:score, weatherScore, totalScore: (score + weatherScore)/2}
+  return { cityName, categoriesScores, qualityOfLiveScore:score, weatherScore: weatherScore.toFixed(2), totalScore: (score + weatherScore)/2}
 }
 
 const compare = (firstCityScores, secondCityScores) => {
@@ -65,25 +80,36 @@ const compare = (firstCityScores, secondCityScores) => {
   firstCityScores.categoriesScores.forEach((category, index) => {
     const firstCityScore = category.score_out_of_10
     const secondCityScore = secondCityScores.categoriesScores[index].score_out_of_10
-    result[category.name] = {winner: firstCityScore > secondCityScore ? firstCityScores.cityName : secondCityScores.cityName, difference: Math.abs(firstCityScore - secondCityScore)}
+    result[category.name] = {winner: firstCityScore > secondCityScore ? firstCityScores.cityName : secondCityScores.cityName, difference: Math.abs(firstCityScore - secondCityScore).toFixed(2)}
   })
+
+  let resultsSummary = {}
 
   //compare quality of live score
   const firstCityQualityOfLiveScore = firstCityScores.qualityOfLiveScore
   const secondCityQualityOfLiveScore = secondCityScores.qualityOfLiveScore
-  result['qualityOfLive'] = {winner: firstCityQualityOfLiveScore > secondCityQualityOfLiveScore ? firstCityScores.cityName : secondCityScores.cityName, difference: Math.abs(firstCityQualityOfLiveScore - secondCityQualityOfLiveScore)}
+  resultsSummary['qualityOfLive'] = { winner: firstCityQualityOfLiveScore > secondCityQualityOfLiveScore ? firstCityScores.cityName : secondCityScores.cityName, difference: Math.abs(firstCityQualityOfLiveScore - secondCityQualityOfLiveScore).toFixed(2) }
 
-  //compare weather score
   const firstCityWeatherScore = firstCityScores.weatherScore
   const secondCityWeatherScore = secondCityScores.weatherScore
-  result['weather'] = {winner: firstCityWeatherScore > secondCityWeatherScore ? firstCityScores.cityName : secondCityScores.cityName, difference: Math.abs(firstCityWeatherScore - secondCityWeatherScore)}
 
   //overall winner
-  const firstCityTotalScore = firstCityScores.totalScore
-  const secondCityTotalScore = secondCityScores.totalScore
-  result['total'] = {winner: firstCityTotalScore > secondCityTotalScore ? firstCityScores.cityName : secondCityScores.cityName, difference: Math.abs(firstCityTotalScore - secondCityTotalScore)}
+  if (!firstCityWeatherScore || !secondCityWeatherScore || isNaN(firstCityWeatherScore)  || isNaN(secondCityWeatherScore)) {
+    resultsSummary['weather'] = { winner: null, difference: null }
 
-  return result
+    const firstCityTotalScore = firstCityQualityOfLiveScore
+    const secondCityTotalScore = secondCityQualityOfLiveScore
+    resultsSummary['total'] = { winner: firstCityTotalScore > secondCityTotalScore ? firstCityScores.cityName : secondCityScores.cityName, difference: Math.abs(firstCityTotalScore - secondCityTotalScore).toFixed(2) }
+  } else {
+    //compare weather score
+    resultsSummary['weather'] = { winner: firstCityWeatherScore > secondCityWeatherScore ? firstCityScores.cityName : secondCityScores.cityName, difference: Math.abs(firstCityWeatherScore - secondCityWeatherScore).toFixed(2) }
+
+    const firstCityTotalScore = firstCityScores.totalScore
+    const secondCityTotalScore = secondCityScores.totalScore
+    resultsSummary['total'] = { winner: firstCityTotalScore > secondCityTotalScore ? firstCityScores.cityName : secondCityScores.cityName, difference: Math.abs(firstCityTotalScore - secondCityTotalScore).toFixed(2) }
+  }
+
+  return { ...result, resultsSummary}
 }
 
 module.exports = router;
