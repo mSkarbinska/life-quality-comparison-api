@@ -19,7 +19,7 @@ const validateId = () => {
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
-  res.render('index', { title: 'City life' });
+  res.status(200).render('index', { title: 'City life' });
 });
 
 router.post('/search', validateSearchRequest(),
@@ -41,32 +41,45 @@ async function (req, res, next) {
 
     const comparisonResults = compare(firstCityScores, secondCityScores)
 
-    res.json({ firstCity: firstCityScores.cityName, secondCity:secondCityScores.cityName, comparisonResults })
+    res.status(200).json({ firstCity: firstCityScores.cityName, secondCity:secondCityScores.cityName, comparisonResults })
   } catch (error) {
     res.status(400).json({ error: error.message })
   }
 }
 );
 
-router.post("/comparison", function (req, res, next) {
+router.post("/comparison", function (req, res) {
   const comparison = req.body
 
   comparison.id = uuidv4()
   
   comparisons.push(comparison)
-  res.json({ 
+  res.status(201).json({ 
     comparison_id: comparison.id,
     message: "Comparison added successfully" })
 })
 
-router.get("/comparison/:id", validateId(), function (req, res, next) {
+router.get("/comparison/:id", validateId(), function (req, res) {
   const id = req.params.id
 
   const comparison = comparisons.find(comparison => comparison.id === id)
   if (comparison) {
-    res.json(comparison)
+    res.status(200).json(comparison)
   } else {
     res.status(404).json({ error: "Comparison not found" })
+  }
+})
+
+router.delete("/comparison/:id", validateId(), function (req, res) {
+  const id = req.params.id
+  
+  const comparison = comparisons.find(comparison => comparison.id === id)
+
+  if(!comparison) {
+    res.status(404).json({ error: "Comparison not found" })
+  } else {
+    comparisons = comparisons.filter(comparison => comparison.id !== id)
+    res.status(200).json({ message: "Comparison deleted successfully" })
   }
 })
 
