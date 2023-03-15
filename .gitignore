@@ -1,3 +1,12 @@
-/.env
-/bin
-/node_modules
+# Linter
+.eslintrc.json
+
+# Compiled binary addons
+build/Release
+bin
+
+# Dependency directory
+node_modules
+
+# Environment variables
+.env

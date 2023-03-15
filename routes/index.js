@@ -1,12 +1,15 @@
 const express = require('express');
-const router = express.Router();
 const { body, validationResult, check } = require('express-validator');
 const { getCityData, getScores, compare } = require('../helpers/helpers')
 const { v4: uuidv4 } = require('uuid');
+const cors = require('cors')
+const router = express.Router();
+
+router.use(cors())
 
 let comparisons = require('../data/comparisons')
 
-const validateSearchRequest = () => {
+const validateSearchRequest = (req, res, next) => {
   return [
     body('firstCity').notEmpty().withMessage('First city name is required.').matches(/^[a-zA-Z\s]+$/).withMessage('First city name can only contain letters and whitespace.'),
     body('secondCity').notEmpty().withMessage('Second city name is required.').matches(/^[a-zA-Z\s]+$/).withMessage('Second city name can only contain letters and whitespace.'),
@@ -19,12 +22,14 @@ const validateId = () => {
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
-  res.status(200).render('index', { title: 'City life' });
+  //paths to resources
+  res.status(200).render('index', { title: 'Express' });
 });
 
 router.post('/search', validateSearchRequest(),
 async function (req, res, next) {
   const errors = validationResult(req);
+
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
   }
