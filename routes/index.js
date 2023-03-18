@@ -4,6 +4,8 @@ const { getCityData, getScores, compare } = require('../helpers/helpers')
 const { v4: uuidv4 } = require('uuid');
 const cors = require('cors')
 const router = express.Router();
+const jsonwebtoken = require("jsonwebtoken");
+const config = require("../config");
 
 router.use(cors())
 
@@ -20,10 +22,43 @@ const validateId = () => {
   return [check('id').isUUID().withMessage('Comparison id must be a valid UUID.')]
 }
 
+checkAuth = (req, res, next) => {
+  if (!req.headers.authorization) {
+    return res.status(401).json({ error: "Not Authorized" });
+  }
+
+  // Bearer <token>>
+  const authHeader = req.headers.authorization;
+  const token = authHeader.split(" ")[1];
+  try {
+    // Verify the token is valid
+    const { user } = jsonwebtoken.verify(token, config.JWT_SECRET);
+    next()
+  } catch (error) {
+    return res.status(401).json({ error: "Not Authorized" });
+  }
+  }
+
 /* GET home page. */
-router.get('/', function(req, res, next) {
+router.get('/', checkAuth, function(req, res, next) {
   //paths to resources
-  res.status(200).render('index', { title: 'Express' });
+  //res.status(200).render('index', { title: 'Express' });
+  res.status(200).json({ message: "Welcome to the quality life comparison API!" })
+});
+
+router.post("/login", (req, res) => {
+  const { username, password } = req.body;
+  console.log(`${username} is trying to login ..`);
+
+  if (username === "admin" && password === "admin") {
+    return res.json({
+      token: jsonwebtoken.sign({ user: "admin" }, JWT_SECRET),
+    });
+  }
+
+  return res
+    .status(401)
+    .json({ message: "The username and password your provided are invalid" });
 });
 
 router.post('/search', validateSearchRequest(),
