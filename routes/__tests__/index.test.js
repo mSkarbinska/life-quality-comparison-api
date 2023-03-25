@@ -1,22 +1,22 @@
-// const request = require('supertest');
-// const app = require('../../app');
-// require('dotenv').config();
+const request = require('supertest');
+const app = require('../../app');
+require('dotenv').config();
 
 // simple test
 test('sums two values', () => {
   expect(1 + 2).toBe(3);
 });
 
-// describe('GET /', () => {
-//   test('responds with status 200', async () => {
-//     const response = await request(app).get('/');
-//     expect(response.status).toBe(200);
-//   });
-//   test('responds with a message', async () => {
-//     const response = await request(app).get('/');
-//     expect(response.body.message).toBe('Welcome to the quality life comparison API!');
-//   });
-// });
+describe('GET /', () => {
+  test('responds with status 200', async () => {
+    const response = await request(app).get('/');
+    expect(response.status).toBe(200);
+  });
+  test('responds with a message', async () => {
+    const response = await request(app).get('/');
+    expect(response.body.message).toBe('Welcome to the quality life comparison API!');
+  });
+});
 
 // describe('Non existent endpoint', () => {
 //   test('responds with status 404', async () => {
