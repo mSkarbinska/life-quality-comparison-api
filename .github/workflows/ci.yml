@@ -2,6 +2,11 @@ name: Node.js CI
 
 on: [push]
 
+env:
+  LOGIN: ${{ vars.LOGIN }}
+  PASSWORD: ${{ vars.PASSWORD }}
+  TOKEN: ${{ vars.TOKEN }}
+  JWT_SECRET: ${{ vars.JWT_SECRET }}
 
 jobs:
   build:
