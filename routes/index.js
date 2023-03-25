@@ -1,3 +1,4 @@
+/* eslint-disable import/no-extraneous-dependencies */
 /* eslint-disable consistent-return */
 const express = require('express');
 const jsonwebtoken = require('jsonwebtoken');
@@ -15,11 +16,11 @@ router.use(cors());
 
 let comparisons = [];
 
-router.get('/', checkAuth, (req, res) => {
+router.get('/', (req, res) => {
   res.status(200).json({ message: 'Welcome to the quality life comparison API!' });
 });
 
-router.post('/login', (req, res, next) => {
+router.post('/login', (req, res) => {
   const { username, password } = req.body;
 
   console.log(`${username} is trying to login ..`);
@@ -30,7 +31,7 @@ router.post('/login', (req, res, next) => {
     });
   }
 
-  return next(new Error('Invalid credentials'));
+  return res.status(401).json({ error: 'Invalid credentials' });
 });
 
 router.post(

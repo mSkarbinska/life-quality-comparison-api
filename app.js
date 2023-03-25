@@ -21,6 +21,12 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
 
+app.use((req, res) => {
+  res.status(404).json({
+    error: 'Not Found',
+  });
+});
+
 // centralized error handling middleware
 app.use((err, req, res) => {
   console.error(err.stack);
